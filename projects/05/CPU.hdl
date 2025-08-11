@@ -1,7 +1,7 @@
 // This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
 // by Nisan and Schocken, MIT Press.
-// File name: projects/05/CPU.hdl
+// File name: projects/5/CPU.hdl
 /**
  * The Hack Central Processing unit (CPU).
  * Parses the binary code in the instruction input and executes it according to the
@@ -9,7 +9,7 @@
  * function specified by the instruction. If the instruction specifies to read a memory
  * value, the inM input is expected to contain this value. If the instruction specifies
  * to write a value to the memory, sets the outM output to this value, sets the addressM
- * output to the target address, and asserts the writeM output (when writeM == 0, any
+ * output to the target address, and asserts the writeM output (when writeM = 0, any
  * value may appear in outM).
  * If the reset input is 0, computes the address of the next instruction and sets the
  * pc output to that value. If the reset input is 1, sets pc to 0.
@@ -22,15 +22,84 @@ CHIP CPU {
 
     IN  inM[16],         // M value input  (M = contents of RAM[A])
         instruction[16], // Instruction for execution
-        reset;           // Signals whether to restart the current
+        reset;           // Signals whether to re-start the current
                          // program (reset==1) or continue executing
                          // the current program (reset==0).
 
     OUT outM[16],        // M value output
         writeM,          // Write to M? 
         addressM[15],    // Address in data memory (of M)
-        pc[15];          // Address of next instruction
+        pc[15];          // address of next instruction
 
     PARTS:
-    //// Replace this comment with your code.
+        And(a=instruction[15] , b= instruction[15], out= isInstA);
+        Not(in=isInstA , out=isInstC);
+
+        ALU(x= left, y= registerD, zx= instruction[11], nx= instruction[10], zy= instruction[9], ny= instruction[8], f=instruction[7] , no= instruction[6], out=comp, out=outM, zr= isZero, ng= isNegative);
+
+        // if it is instruction A load the constant else store the computed value
+        Mux16(a[15]=false, a[0..14]=instruction[0..14], b= comp, sel= instruction[15], out= registerAValue);
+
+        // Store at register A if it is instruction A or d1(inst[5]) is on
+        Or(a=isInstA , b= instruction[5], out= writeA);
+
+        And(a=isInstC , b= instruction[3], out= writeM);
+
+        And(a= isInstC, b= instruction[4], out= writeD);
+
+        Register(in=registerAValue , load=writeA, out= registerA, out=registerAData);
+        Register(in= comp, load= writeD, out= registerD);
+
+        // Select registerA if a = 0, and select Memory if a = 1,
+        Mux16(a= registerA, b= inM, sel= instruction[12], out= left);
+
+        And16(a=registerAData, b= registerAData, out[0..14]= addressM);
+
+        Not(in=isZero , out= isNoneZero);
+        Not(in=isNegative, out=isNoneNegative);
+        Or(a= isZero, b= isNegative, out= isNonePositive);
+
+        Not(in=isNonePositive, out= isPositive);
+
+        Not(in=instruction[0] , out= notJ0);
+        Not(in=instruction[1], out=notJ1);
+        Not(in=instruction[2], out=notJ2);
+
+        And(a=notJ0 , b= notJ1, out= notJ0AndnotJ1);
+        And(a=notJ0 , b= notJ2, out= notJ0AndnotJ2);
+        And(a=notJ1 , b= notJ2, out= notJ1AndnotJ2);
+
+        And(a=instruction[0] , b= instruction[1], out= j0Andj1);
+        And(a=instruction[0] , b= instruction[2], out= j0Andj2);
+        And(a=instruction[1] , b= instruction[2], out= j1Andj2);
+
+        And(a= notJ1AndnotJ2, b= instruction[0], out= cond1);
+        And(a=cond1 , b= isPositive, out= JGT);
+
+        And(a= notJ0AndnotJ2, b= instruction[1], out= cond2);
+        And(a=cond2 , b= isZero, out= JEQ);
+
+        And(a= j0Andj1, b= notJ2, out= cond3);
+        And(a=cond3 , b= isNoneNegative, out= JGE);
+
+        And(a= notJ0AndnotJ1, b= instruction[2], out= cond4);
+        And(a=cond4 , b= isNegative, out= JLT);
+
+        And(a= j0Andj2, b= notJ1, out= cond5);
+        And(a=cond5 , b= isNoneZero, out= JNE);
+
+        And(a= j1Andj2, b= notJ0, out= cond6);
+        And(a=cond6 , b= isNonePositive, out= JLE);
+
+        And(a= j0Andj1, b= instruction[2], out= JMP);
+
+        Or(a=JGT , b= JEQ, out= jump1);
+        Or(a= JGE, b= JLT, out= jump2);
+        Or(a= JNE, b= JLE, out= jump3);
+        Or(a= jump1, b= jump2, out= jump4);
+        Or(a= jump3, b= JMP, out= jump0);
+        Or(a= jump0, b= jump4, out= jump);
+        Not(in= jump, out= increment);
+
+        PC(in= registerAData, load= jump, inc= increment, reset= reset, out[0..14]= pc);
 }
