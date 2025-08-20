@@ -39,11 +39,11 @@ class Parser:
         """Returns the instruction type"""
         if self.current_instruction.startswith("@"):
             return self.A_INSTRUCTION
-        elif self.current_instruction.startswith("(") and self.current_instruction.endswith(")"):
+        elif self.current_instruction.startswith("(") and \
+                self.current_instruction.endswith(")"):
             return self.L_INSTRUCTION
         else:
             return self.C_INSTRUCTION
-
 
     def symbol(self) -> str:
         """Returns the instruction's symbol (string)"""
