@@ -36,7 +36,9 @@ class Code:
     @staticmethod
     def comp(mnemonic: str) -> str:
         """Return the 7-bit binary code of the comp mnemonic."""
-        return COMP_TABLE.get(mnemonic)
+        if mnemonic in COMP_TABLE:
+            return COMP_TABLE.get(mnemonic)
+        raise ValueError(f"Unkown comp command: {mnemonic}")
 
     @staticmethod
     def jump(mnemonic: str) -> str:
