@@ -32,10 +32,10 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-        And(a=instruction[15] , b= instruction[15], out= isInstA);
-        Not(in=isInstA , out=isInstC);
+        And(a=instruction[15] , b= instruction[15], out= isInstC);
+        Not(in=isInstC , out=isInstA);
 
-        ALU(x= left, y= registerD, zx= instruction[11], nx= instruction[10], zy= instruction[9], ny= instruction[8], f=instruction[7] , no= instruction[6], out=comp, out=outM, zr= isZero, ng= isNegative);
+        ALU(x= Dregiste, y= left, zx= instruction[11], nx= instruction[10], zy= instruction[9], ny= instruction[8], f=instruction[7] , no= instruction[6], out=comp, out=outM, zr= isZero, ng= isNegative);
 
         // if it is instruction A load the constant else store the computed value
         Mux16(a[15]=false, a[0..14]=instruction[0..14], b= comp, sel= instruction[15], out= registerAValue);
@@ -47,8 +47,8 @@ CHIP CPU {
 
         And(a= isInstC, b= instruction[4], out= writeD);
 
-        Register(in=registerAValue , load=writeA, out= registerA, out=registerAData);
-        Register(in= comp, load= writeD, out= registerD);
+        ARegister(in=registerAValue , load=writeA, out= registerA, out=registerAData);
+        DRegister(in= comp, load= writeD, out= Dregiste);
 
         // Select registerA if a = 0, and select Memory if a = 1,
         Mux16(a= registerA, b= inM, sel= instruction[12], out= left);
@@ -97,9 +97,9 @@ CHIP CPU {
         Or(a= JGE, b= JLT, out= jump2);
         Or(a= JNE, b= JLE, out= jump3);
         Or(a= jump1, b= jump2, out= jump4);
-        Or(a= jump3, b= JMP, out= jump0);
-        Or(a= jump0, b= jump4, out= jump);
+        Or(a= jump3, b= JMP, out= jump5);
+        Or(a= jump5, b= jump4, out= jump6);
+        And(a= jump6, b= isInstC, out= jump);
         Not(in= jump, out= increment);
-
         PC(in= registerAData, load= jump, inc= increment, reset= reset, out[0..14]= pc);
 }
